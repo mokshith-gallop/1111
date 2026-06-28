@@ -1,0 +1,630 @@
+# Queryability smoke + partition/cluster performance (AC6, AC9)
+# Proves every table is queryable (SELECT * succeeds) and partition
+# pruning works on all 16 DM fact/agg tables.
+name: queryability_and_performance
+
+connections:
+  target: { engine: bigquery }
+
+migration:
+  dataset_map:
+    nbcs_staging: dmt_build_staging
+    nbcs_ods: dmt_build_ods
+    nbcs_dm: dmt_build_dm
+  steps:
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_crm_client.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_crm_client_contact.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_crm_contract.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_crm_contract_line.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_crm_program.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_crm_sla_credit_delta.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_crm_sla_target.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_file_chat_transcripts.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_file_dialer_result.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_file_email_interaction.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_file_interaction_export.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_file_ivr_logs.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_file_qa_forms.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_file_roster.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_file_speech_analytics.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_file_survey_csat.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_file_telco_invoice.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_fin_invoice.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_fin_invoice_line.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_fin_payroll_adj_delta.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_fin_rate_card.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_fin_rate_card_change_delta.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_fin_timesheet_delta.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_hr_agent.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_hr_agent_skill.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_hr_attrition_event_delta.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_hr_employment_event.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_hr_org_unit.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_hr_skill.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_tel_agent_state_event.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_tel_call.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_tel_call_segment.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_tel_callback_request_delta.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_tel_disposition_code.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_tel_queue.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_tkt_category.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_tkt_ticket.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_tkt_ticket_event.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_tkt_worklog_delta.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_wfm_adherence_event.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_wfm_forecast.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_wfm_schedule.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_wfm_shift.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_wfm_shift_swap_delta.sql }
+    - { kind: ddl, dataset: dmt_build_staging, sql: sql/ddl/nbcs_staging/stg_wfm_timeoff_request.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_adherence_event.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_agent_acid.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_agent_assignment_scd2.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_agent_scd2.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_agent_skill_scd2.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_attrition_event.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_call.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_callback_request.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_chat_session.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_client_acid.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_contract.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_contract_line.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_dialer_attempt.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_email_interaction.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_interaction.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_invoice_acid.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_ivr_session.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_org_unit.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_payroll_adjustment.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_program.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_qa_evaluation.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_queue.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_rate_card.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_schedule.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_shift_swap.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_sla_credit.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_sla_target.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_survey_response.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_ticket_acid.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_ticket_worklog.sql }
+    - { kind: ddl, dataset: dmt_build_ods, sql: sql/ddl/nbcs_ods/ods_timesheet.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/agg_agent_daily.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/agg_agent_weekly.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/agg_billing_monthly.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/agg_csat_rollup_monthly.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/agg_program_monthly.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/agg_queue_hourly.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/agg_site_daily.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/dim_agent.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/dim_client.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/dim_date.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/dim_disposition.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/dim_org.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/dim_program.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/dim_queue.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/dim_shift.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/dim_site.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/fact_adherence_daily.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/fact_agent_activity.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/fact_billing_line.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/fact_csat_survey.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/fact_interaction.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/fact_ivr_path.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/fact_qa_evaluation.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/fact_queue_interval.sql }
+    - { kind: ddl, dataset: dmt_build_dm, sql: sql/ddl/nbcs_dm/fact_ticket.sql }
+
+suites:
+  # --- AC6: Queryability smoke — SELECT * on all 101 tables + 3 cross-table ---
+  - pattern: query_performance
+    id: queryability-smoke
+    queries:
+      - id: select-stg_crm_client
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_crm_client` LIMIT 0"
+      - id: select-stg_crm_client_contact
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_crm_client_contact` LIMIT 0"
+      - id: select-stg_crm_contract
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_crm_contract` LIMIT 0"
+      - id: select-stg_crm_contract_line
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_crm_contract_line` LIMIT 0"
+      - id: select-stg_crm_program
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_crm_program` LIMIT 0"
+      - id: select-stg_crm_sla_credit_delta
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_crm_sla_credit_delta` LIMIT 0"
+      - id: select-stg_crm_sla_target
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_crm_sla_target` LIMIT 0"
+      - id: select-stg_file_chat_transcripts
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_file_chat_transcripts` LIMIT 0"
+      - id: select-stg_file_dialer_result
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_file_dialer_result` LIMIT 0"
+      - id: select-stg_file_email_interaction
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_file_email_interaction` LIMIT 0"
+      - id: select-stg_file_interaction_export
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_file_interaction_export` LIMIT 0"
+      - id: select-stg_file_ivr_logs
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_file_ivr_logs` LIMIT 0"
+      - id: select-stg_file_qa_forms
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_file_qa_forms` LIMIT 0"
+      - id: select-stg_file_roster
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_file_roster` LIMIT 0"
+      - id: select-stg_file_speech_analytics
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_file_speech_analytics` LIMIT 0"
+      - id: select-stg_file_survey_csat
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_file_survey_csat` LIMIT 0"
+      - id: select-stg_file_telco_invoice
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_file_telco_invoice` LIMIT 0"
+      - id: select-stg_fin_invoice
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_fin_invoice` LIMIT 0"
+      - id: select-stg_fin_invoice_line
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_fin_invoice_line` LIMIT 0"
+      - id: select-stg_fin_payroll_adj_delta
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_fin_payroll_adj_delta` LIMIT 0"
+      - id: select-stg_fin_rate_card
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_fin_rate_card` LIMIT 0"
+      - id: select-stg_fin_rate_card_change_delta
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_fin_rate_card_change_delta` LIMIT 0"
+      - id: select-stg_fin_timesheet_delta
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_fin_timesheet_delta` LIMIT 0"
+      - id: select-stg_hr_agent
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_hr_agent` LIMIT 0"
+      - id: select-stg_hr_agent_skill
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_hr_agent_skill` LIMIT 0"
+      - id: select-stg_hr_attrition_event_delta
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_hr_attrition_event_delta` LIMIT 0"
+      - id: select-stg_hr_employment_event
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_hr_employment_event` LIMIT 0"
+      - id: select-stg_hr_org_unit
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_hr_org_unit` LIMIT 0"
+      - id: select-stg_hr_skill
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_hr_skill` LIMIT 0"
+      - id: select-stg_tel_agent_state_event
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_tel_agent_state_event` LIMIT 0"
+      - id: select-stg_tel_call
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_tel_call` LIMIT 0"
+      - id: select-stg_tel_call_segment
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_tel_call_segment` LIMIT 0"
+      - id: select-stg_tel_callback_request_delta
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_tel_callback_request_delta` LIMIT 0"
+      - id: select-stg_tel_disposition_code
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_tel_disposition_code` LIMIT 0"
+      - id: select-stg_tel_queue
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_tel_queue` LIMIT 0"
+      - id: select-stg_tkt_category
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_tkt_category` LIMIT 0"
+      - id: select-stg_tkt_ticket
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_tkt_ticket` LIMIT 0"
+      - id: select-stg_tkt_ticket_event
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_tkt_ticket_event` LIMIT 0"
+      - id: select-stg_tkt_worklog_delta
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_tkt_worklog_delta` LIMIT 0"
+      - id: select-stg_wfm_adherence_event
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_wfm_adherence_event` LIMIT 0"
+      - id: select-stg_wfm_forecast
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_wfm_forecast` LIMIT 0"
+      - id: select-stg_wfm_schedule
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_wfm_schedule` LIMIT 0"
+      - id: select-stg_wfm_shift
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_wfm_shift` LIMIT 0"
+      - id: select-stg_wfm_shift_swap_delta
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_wfm_shift_swap_delta` LIMIT 0"
+      - id: select-stg_wfm_timeoff_request
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_staging.stg_wfm_timeoff_request` LIMIT 0"
+      - id: select-ods_adherence_event
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_adherence_event` LIMIT 0"
+      - id: select-ods_agent_acid
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_agent_acid` LIMIT 0"
+      - id: select-ods_agent_assignment_scd2
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_agent_assignment_scd2` LIMIT 0"
+      - id: select-ods_agent_scd2
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_agent_scd2` LIMIT 0"
+      - id: select-ods_agent_skill_scd2
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_agent_skill_scd2` LIMIT 0"
+      - id: select-ods_attrition_event
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_attrition_event` LIMIT 0"
+      - id: select-ods_call
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_call` LIMIT 0"
+      - id: select-ods_callback_request
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_callback_request` LIMIT 0"
+      - id: select-ods_chat_session
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_chat_session` LIMIT 0"
+      - id: select-ods_client_acid
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_client_acid` LIMIT 0"
+      - id: select-ods_contract
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_contract` LIMIT 0"
+      - id: select-ods_contract_line
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_contract_line` LIMIT 0"
+      - id: select-ods_dialer_attempt
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_dialer_attempt` LIMIT 0"
+      - id: select-ods_email_interaction
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_email_interaction` LIMIT 0"
+      - id: select-ods_interaction
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_interaction` LIMIT 0"
+      - id: select-ods_invoice_acid
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_invoice_acid` LIMIT 0"
+      - id: select-ods_ivr_session
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_ivr_session` LIMIT 0"
+      - id: select-ods_org_unit
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_org_unit` LIMIT 0"
+      - id: select-ods_payroll_adjustment
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_payroll_adjustment` LIMIT 0"
+      - id: select-ods_program
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_program` LIMIT 0"
+      - id: select-ods_qa_evaluation
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_qa_evaluation` LIMIT 0"
+      - id: select-ods_queue
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_queue` LIMIT 0"
+      - id: select-ods_rate_card
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_rate_card` LIMIT 0"
+      - id: select-ods_schedule
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_schedule` LIMIT 0"
+      - id: select-ods_shift_swap
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_shift_swap` LIMIT 0"
+      - id: select-ods_sla_credit
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_sla_credit` LIMIT 0"
+      - id: select-ods_sla_target
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_sla_target` LIMIT 0"
+      - id: select-ods_survey_response
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_survey_response` LIMIT 0"
+      - id: select-ods_ticket_acid
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_ticket_acid` LIMIT 0"
+      - id: select-ods_ticket_worklog
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_ticket_worklog` LIMIT 0"
+      - id: select-ods_timesheet
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_ods.ods_timesheet` LIMIT 0"
+      - id: select-agg_agent_daily
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_agent_daily` LIMIT 0"
+      - id: select-agg_agent_weekly
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_agent_weekly` LIMIT 0"
+      - id: select-agg_billing_monthly
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_billing_monthly` LIMIT 0"
+      - id: select-agg_csat_rollup_monthly
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_csat_rollup_monthly` LIMIT 0"
+      - id: select-agg_program_monthly
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_program_monthly` LIMIT 0"
+      - id: select-agg_queue_hourly
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_queue_hourly` LIMIT 0"
+      - id: select-agg_site_daily
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_site_daily` LIMIT 0"
+      - id: select-dim_agent
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.dim_agent` LIMIT 0"
+      - id: select-dim_client
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.dim_client` LIMIT 0"
+      - id: select-dim_date
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.dim_date` LIMIT 0"
+      - id: select-dim_disposition
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.dim_disposition` LIMIT 0"
+      - id: select-dim_org
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.dim_org` LIMIT 0"
+      - id: select-dim_program
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.dim_program` LIMIT 0"
+      - id: select-dim_queue
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.dim_queue` LIMIT 0"
+      - id: select-dim_shift
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.dim_shift` LIMIT 0"
+      - id: select-dim_site
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.dim_site` LIMIT 0"
+      - id: select-fact_adherence_daily
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_adherence_daily` LIMIT 0"
+      - id: select-fact_agent_activity
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_agent_activity` LIMIT 0"
+      - id: select-fact_billing_line
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_billing_line` LIMIT 0"
+      - id: select-fact_csat_survey
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_csat_survey` LIMIT 0"
+      - id: select-fact_interaction
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_interaction` LIMIT 0"
+      - id: select-fact_ivr_path
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_ivr_path` LIMIT 0"
+      - id: select-fact_qa_evaluation
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_qa_evaluation` LIMIT 0"
+      - id: select-fact_queue_interval
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_queue_interval` LIMIT 0"
+      - id: select-fact_ticket
+        mode: measure
+        sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_ticket` LIMIT 0"
+      # Representative cross-table queries
+      - id: staging-filtered-projection
+        mode: measure
+        sql: "SELECT call_id, ani, start_epoch FROM `${GCP_PROJECT}.dmt_build_staging.stg_tel_call` WHERE load_date = DATE '2024-01-15' LIMIT 10"
+      - id: ods-cross-table-join
+        mode: measure
+        sql: "SELECT c.call_id, q.queue_name FROM `${GCP_PROJECT}.dmt_build_ods.ods_call` c JOIN `${GCP_PROJECT}.dmt_build_ods.ods_queue` q ON c.queue_id = q.queue_id LIMIT 10"
+      - id: dm-multi-fact-join
+        mode: measure
+        sql: "SELECT cl.client_name, p.billed_amount, b.net_revenue FROM `${GCP_PROJECT}.dmt_build_dm.dim_client` cl JOIN `${GCP_PROJECT}.dmt_build_dm.agg_program_monthly` p ON cl.client_sk = p.client_sk JOIN `${GCP_PROJECT}.dmt_build_dm.agg_billing_monthly` b ON cl.client_sk = b.client_sk LIMIT 10"
+
+  # --- AC9: Partition pruning — 16 DM partitioned tables + 3 cluster comparisons ---
+  - pattern: query_performance
+    id: partition-pruning
+    queries:
+      - id: partition-prune-agg_agent_daily
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_agent_daily`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_agent_daily` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-agg_agent_weekly
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_agent_weekly`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_agent_weekly` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-agg_billing_monthly
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_billing_monthly`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_billing_monthly` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-agg_csat_rollup_monthly
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_csat_rollup_monthly`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_csat_rollup_monthly` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-agg_program_monthly
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_program_monthly`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_program_monthly` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-agg_queue_hourly
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_queue_hourly`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_queue_hourly` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-agg_site_daily
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_site_daily`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_site_daily` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-fact_adherence_daily
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_adherence_daily`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_adherence_daily` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-fact_agent_activity
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_agent_activity`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_agent_activity` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-fact_billing_line
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_billing_line`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_billing_line` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-fact_csat_survey
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_csat_survey`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_csat_survey` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-fact_interaction
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_interaction`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_interaction` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-fact_ivr_path
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_ivr_path`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_ivr_path` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-fact_qa_evaluation
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_qa_evaluation`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_qa_evaluation` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-fact_queue_interval
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_queue_interval`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_queue_interval` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: partition-prune-fact_ticket
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_ticket`"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_ticket` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      # Cluster pruning — partition+cluster filter vs partition-only
+      - id: cluster-prune-fact-interaction
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_interaction` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_interaction` WHERE _PARTITIONDATE = '2024-01-15' AND channel = 'VOICE'"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: cluster-prune-agg-agent-daily
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_agent_daily` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.agg_agent_daily` WHERE _PARTITIONDATE = '2024-01-15' AND agent_sk = 1"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
+      - id: cluster-prune-fact-queue-interval
+        mode: compare
+        a:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_queue_interval` WHERE _PARTITIONDATE = '2024-01-15'"
+          dry_run: true
+        b:
+          sql: "SELECT * FROM `${GCP_PROJECT}.dmt_build_dm.fact_queue_interval` WHERE _PARTITIONDATE = '2024-01-15' AND queue_sk = 1"
+          dry_run: true
+        compare:
+          bytes_scanned: "b <= a"
