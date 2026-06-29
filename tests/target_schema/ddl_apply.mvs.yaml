@@ -746,7 +746,7 @@ suites:
           - { name: status, type: STRING }
       - table: ods_agent_assignment_scd2
         expect_object_type: TABLE
-        partition_by: "RANGE_BUCKET(eff_from_year, GENERATE_ARRAY(2020, 2030, 1))"
+        partition_by: eff_from_year
         columns:
           - { name: assignment_history_id, type: STRING }
           - { name: agent_id, type: INT64 }
@@ -759,7 +759,7 @@ suites:
           - { name: eff_from_year, type: INT64 }
       - table: ods_agent_scd2
         expect_object_type: TABLE
-        partition_by: "RANGE_BUCKET(eff_from_year, GENERATE_ARRAY(2020, 2030, 1))"
+        partition_by: eff_from_year
         columns:
           - { name: agent_history_id, type: STRING }
           - { name: agent_id, type: INT64 }
@@ -774,7 +774,7 @@ suites:
           - { name: eff_from_year, type: INT64 }
       - table: ods_agent_skill_scd2
         expect_object_type: TABLE
-        partition_by: "RANGE_BUCKET(eff_from_year, GENERATE_ARRAY(2020, 2030, 1))"
+        partition_by: eff_from_year
         columns:
           - { name: agent_skill_history_id, type: STRING }
           - { name: agent_id, type: INT64 }
